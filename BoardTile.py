@@ -2,15 +2,14 @@ import pygame
 
 from Constants import *
 
-from MainProgram import MineSweeperBoard
-
 
 class BoardTile:
     """
     This class represents a tile in the mine sweeper game. It processes interactions with tiles and their rendering.
     """
 
-    def __init__(self, screen: pygame.display, game_board: MineSweeperBoard, id: tuple[int, int], pos: tuple[int, int], size: tuple[int, int], font: pygame.font, type: str):
+    def __init__(self, screen: pygame.display, game_board, id: tuple[int, int], pos: tuple[int, int],
+                 size: tuple[int, int], font: pygame.font, type: str):
         """
         Initializes a BoardTile object
 
@@ -72,10 +71,12 @@ class BoardTile:
                     self.cur_type = self.true_type
             elif button == 3:  # Right Click
                 # Flips the state of a tile between unknown and flag
-                if self.cur_type == "unknown":
+                if self.cur_type == "unknown" and self.game_board.flags_left:  # Only allow flags if under limit
                     self.cur_type = "flag"
+                    self.game_board.flags_left -= 1
                 elif self.cur_type == "flag":
                     self.cur_type = "unknown"
+                    self.game_board.flags_left += 1
 
     def render_tile(self) -> None:
         """
