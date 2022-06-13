@@ -3,145 +3,112 @@ import random
 import pygame
 import sys
 
-# Modifiable Constants
-BOARD_DIMENSIONS = (400, 400)
-GRID_DIMENSIONS = (10, 10)
+from Constants import *
+from BoardTile import BoardTile
 
-GREY_PRIMARY = (192, 192, 192)
-GREY_SECONDARY = (128, 128, 128)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-BLACK = (0, 0, 0)
-
-TILE_PAD = 1 # Default padding so known tiles are simple
-TILE_PAD_2 = 3 # Interior padding for mine, flag and thickness of unkown tiles
-
-# Constants that should not be modified
-OPTION_BAR_HEIGHT = 40
-OPTION_BAR_TEXT_SIZE = 20
-TILE_TEXT_SIZE = 40
-
-NUMBER_COLOR_LOOKUP = {'1': (0, 0, 255), '2': (0, 128, 0), '3': (255,0,0), '4': (0, 0, 128)}
-
-# Automatically initialized constants
-WINDOW_DIMENSIONS = (BOARD_DIMENSIONS[0], BOARD_DIMENSIONS[1]+OPTION_BAR_HEIGHT)
 
 # Creating the font
+class MineSweeperBoard():
+    def __init__(self):
+        pygame.init()
+        screen = pygame.display.set_mode(WINDOW_DIMENSIONS)
+        screen.fill(WHITE)
+        pygame.display.set_caption('PyMineSweeper')
 
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode(WINDOW_DIMENSIONS)
-    screen.fill(WHITE)
-    pygame.display.set_caption('PyMineSweeper')
+        font1 = pygame.font.SysFont('lucidaconsole', OPTION_BAR_TEXT_SIZE)  # Font for option bar
+        font2 = pygame.font.SysFont('lucidaconsole', TILE_TEXT_SIZE)  # Font for numbers in squares
 
-    font1 = pygame.font.SysFont('lucidaconsole', OPTION_BAR_TEXT_SIZE)  # Font for option bar
-    font2 = pygame.font.SysFont('lucidaconsole', TILE_TEXT_SIZE)  # Font for numbers in squares
+        # Initialize objects for
+        self.tile_table = [[None for x in range(GRID_DIMENSIONS[0])] for y in range(GRID_DIMENSIONS[1])]
 
-    # Mainloop
-    while True:
         tile_dim = (BOARD_DIMENSIONS[0] // GRID_DIMENSIONS[0], BOARD_DIMENSIONS[1] // GRID_DIMENSIONS[1])
 
-        # Drawing the option bar
-        draw_option_bar(screen, font1, 11)
+        for i in range(NUMBER_MINES):
+            x = random.randint(0, GRID_DIMENSIONS[0] - 1)
+            y = random.randint(0, GRID_DIMENSIONS[1] - 1)
+            self.tile_table[y][x] = BoardTile(screen, self, (x, y),
+                                              (x * tile_dim[0], y * tile_dim[1] + OPTION_BAR_HEIGHT), tile_dim, font2,
+                                              "mine")
 
-        # Drawing tiles on the board
         for x in range(0, GRID_DIMENSIONS[0]):
             for y in range(0, GRID_DIMENSIONS[1]):
-                draw_tile(screen, (x * tile_dim[0], y * tile_dim[1] + OPTION_BAR_HEIGHT), tile_dim, font2, "number")
+                if self.tile_table[y][x] is None:
+                    self.tile_table[y][x] = BoardTile(screen, self, (x, y),
+                                                      (x * tile_dim[0], y * tile_dim[1] + OPTION_BAR_HEIGHT), tile_dim,
+                                                      font2, "number")
 
-        # Code to exit the program if the quit button is pressed
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+        # Mainloop
+        while True:
+            # Drawing the option bar
+            self.draw_option_bar(screen, font1, 11)
 
-        pygame.display.update()
+            # Drawing tiles on the board
+            for x in range(0, GRID_DIMENSIONS[0]):
+                for y in range(0, GRID_DIMENSIONS[1]):
+                    self.tile_table[y][x].render_tile()
 
-def draw_option_bar(screen, font, flags):
-    flag_str = "Flags: " + str(flags)
-    label1 = font.render(flag_str, True, RED)
-    width1, height1 = font.size(flag_str)
-    screen.blit(label1, (WINDOW_DIMENSIONS[0] * 1 / 4 - width1 / 2, 20 - height1 / 2))
+            # Code to exit the program if the quit button is pressed
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mx, my = pygame.mouse.get_pos()
+                    for x in range(0, GRID_DIMENSIONS[0]):
+                        for y in range(0, GRID_DIMENSIONS[1]):
+                            self.tile_table[y][x].on_clicked(mx, my, event.button)
 
-    solve_str = "Solve"
-    label2 = font.render(solve_str, True, RED)
-    width2, height2 = font.size(solve_str)
-    screen.blit(label2, (WINDOW_DIMENSIONS[0] * 2 / 4 - width2 / 2, 20 - height2 / 2))
+            pygame.display.update()
 
-    restart_str = "Restart"
-    label3 = font.render(restart_str, True, RED)
-    width3, height3 = font.size(restart_str)
-    screen.blit(label3, (WINDOW_DIMENSIONS[0] * 3 / 4 - width3 / 2, 20 - height3 / 2))
-    return
+    def draw_option_bar(self, screen, font, flags: int) -> None:
+        flag_str = "Flags: " + str(flags)
+        label1 = font.render(flag_str, True, RED)
+        width1, height1 = font.size(flag_str)
+        screen.blit(label1, (WINDOW_DIMENSIONS[0] * 1 / 4 - width1 / 2, 20 - height1 / 2))
 
-def draw_tile(screen,pos,size,font,type):
-    if type == "unfilled":
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_PRIMARY, rect)
+        solve_str = "Solve"
+        label2 = font.render(solve_str, True, RED)
+        width2, height2 = font.size(solve_str)
+        screen.blit(label2, (WINDOW_DIMENSIONS[0] * 2 / 4 - width2 / 2, 20 - height2 / 2))
 
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_SECONDARY, rect, TILE_PAD)
+        restart_str = "Restart"
+        label3 = font.render(restart_str, True, RED)
+        width3, height3 = font.size(restart_str)
+        screen.blit(label3, (WINDOW_DIMENSIONS[0] * 3 / 4 - width3 / 2, 20 - height3 / 2))
+        return
 
-        # Polygon points for creating the special square design with bevelled corners
-        L = pos[0] + TILE_PAD  # Represents the x coordinate of the left corners
-        R = pos[0] + size[0] - TILE_PAD  # Represents the x coordinate of the right corners
-        U = pos[1] + TILE_PAD # Represents the y coordinate of the upper corners
-        D = pos[1] + size[1] - TILE_PAD # Represents the y coordinate of the upper corners
+    def get_surrounding_tiles(self, x: int, y: int) -> list[BoardTile]:
+        tiles = []
+        # Check all tiles around the current tile (8 in total)
+        for a, b in [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)]:
+            cur_x = x + a
+            cur_y = y + b
+            # Only check squares INSIDE the board (matters at the edges)
+            if 0 <= cur_x <= GRID_DIMENSIONS[0] - 1 and 0 <= cur_y <= GRID_DIMENSIONS[1] - 1:
+                temp = self.tile_table[cur_y][cur_x]
+                if temp is not None:  # Small check because bombs are initialized first and then the tiles randomly
+                    tiles.append(temp)
+        return tiles
 
-        topleft = [(L, U), (R, U),
-                   (R - TILE_PAD_2, U + TILE_PAD_2),
-                   (L + TILE_PAD_2, U + TILE_PAD_2),
-                   (L + TILE_PAD_2, D - TILE_PAD_2),
-                   (L, D)]
+    def get_surrounding_mines(self, x: int, y: int) -> int:
+        count = 0
+        tiles = self.get_surrounding_tiles(x, y)
+        for tile in tiles:
+            if tile.true_type == "mine":
+                count += 1
+        return count
 
-        bottomright = [(R, D), (R, U),
-                       (R - TILE_PAD_2, U + TILE_PAD_2),
-                       (R - TILE_PAD_2, D - TILE_PAD_2),
-                       (L + TILE_PAD_2, D - TILE_PAD_2),
-                       (L, D)]
+    def uncover_neighbouring(self, x: int, y: int, visited: set[BoardTile]) -> None:
+        # Perform a recursive search on all neighbours
+        cur_tile = self.tile_table[y][x]
+        visited.add(cur_tile)
 
-        pygame.draw.polygon(screen, WHITE, topleft)
-        pygame.draw.polygon(screen, GREY_SECONDARY, bottomright)
-    elif type == "filled":
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_PRIMARY, rect)
+        neighbours = self.get_surrounding_tiles(x, y)
+        for tile in neighbours:
+            if tile.true_type == "number" and tile.number == 0 and tile not in visited:
+                tile.cur_type = tile.true_type
+                cur_x, cur_y = tile.id
+                self.uncover_neighbouring(cur_x, cur_y, visited)
 
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_SECONDARY, rect, TILE_PAD)
-    elif type == "mine":
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_PRIMARY, rect)
-
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_SECONDARY, rect, TILE_PAD)
-
-        pygame.draw.circle(screen, BLACK, (pos[0] + size[0]/2, pos[1] + size[1]/2), size[0]/2 - TILE_PAD_2*2)
-        pygame.draw.circle(screen, WHITE, (pos[0] + size[0]/2.5, pos[1] + size[1]/2.5), size[0]/6 - TILE_PAD_2*2)
-    elif type == "flag":
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_PRIMARY, rect)
-
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_SECONDARY, rect, TILE_PAD)
-
-        points = [(pos[0] + TILE_PAD_2, pos[1] + size[1]/2),
-                  (pos[0] + size[0] - TILE_PAD_2, pos[1] + TILE_PAD_2),
-                  (pos[0] + size[0] - TILE_PAD_2, pos[1] + size[1] - TILE_PAD_2)]
-        pygame.draw.polygon(screen, RED, points)
-    elif type == "number":
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_PRIMARY, rect)
-
-        rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
-        pygame.draw.rect(screen, GREY_SECONDARY, rect, TILE_PAD)
-
-        # Rendering the number in the tile
-        number = str(random.randint(1, 4))
-        number_color = NUMBER_COLOR_LOOKUP[number]
-        number_image = font.render(number, True, number_color)
-        number_image = pygame.transform.scale(number_image, (size[0] - 2*TILE_PAD_2, size[1] - 2*TILE_PAD_2))
-        dim = number_image.get_size()
-        screen.blit(number_image, (pos[0] + dim[0] / 10, pos[1] + dim[1] / 10))
-    return
-
-main()
+if __name__ == "__main__":
+    MineSweeperBoard()
