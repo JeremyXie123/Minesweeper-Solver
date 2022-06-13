@@ -8,15 +8,24 @@ from BoardTile import BoardTile
 
 
 # Creating the font
-class MineSweeperBoard():
+class MineSweeperBoard:
+    """
+    This class initializes a mine sweeper game on a board and provides various methods to interact with it. The board is represented by a two-dimensional array indexed via [y][x]
+
+    Each tile is indexed in the tile_table 2D array, with the position (x,y) being indexed as tile_table[y][x].
+
+    The position (0,0) represents the top left tile, while (x,y) represents a tile placed x right and y down.
+    """
+
     def __init__(self):
+        """Initializes a MineSweeperBoard object"""
+        # Initializing the window
         pygame.init()
-        screen = pygame.display.set_mode(WINDOW_DIMENSIONS)
-        screen.fill(WHITE)
+        self.screen = pygame.display.set_mode(WINDOW_DIMENSIONS)
+        self.screen.fill(WHITE)
         pygame.display.set_caption('PyMineSweeper')
 
-        font1 = pygame.font.SysFont('lucidaconsole', OPTION_BAR_TEXT_SIZE)  # Font for option bar
-        font2 = pygame.font.SysFont('lucidaconsole', TILE_TEXT_SIZE)  # Font for numbers in squares
+        self.font = pygame.font.SysFont('lucidaconsole', TILE_TEXT_SIZE)  # Font for numbers in squares
 
         # Initialize objects for
         self.tile_table = [[None for x in range(GRID_DIMENSIONS[0])] for y in range(GRID_DIMENSIONS[1])]
@@ -26,33 +35,30 @@ class MineSweeperBoard():
         for i in range(NUMBER_MINES):
             x = random.randint(0, GRID_DIMENSIONS[0] - 1)
             y = random.randint(0, GRID_DIMENSIONS[1] - 1)
-            self.tile_table[y][x] = BoardTile(screen, self, (x, y),
-                                              (x * tile_dim[0], y * tile_dim[1] + OPTION_BAR_HEIGHT), tile_dim, font2,
+            self.tile_table[y][x] = BoardTile(self.screen, self, (x, y),
+                                              (x * tile_dim[0], y * tile_dim[1]), tile_dim, self.font,
                                               "mine")
 
         for x in range(0, GRID_DIMENSIONS[0]):
             for y in range(0, GRID_DIMENSIONS[1]):
                 if self.tile_table[y][x] is None:
-                    self.tile_table[y][x] = BoardTile(screen, self, (x, y),
-                                                      (x * tile_dim[0], y * tile_dim[1] + OPTION_BAR_HEIGHT), tile_dim,
-                                                      font2, "number")
+                    self.tile_table[y][x] = BoardTile(self.screen, self, (x, y),
+                                                      (x * tile_dim[0], y * tile_dim[1]), tile_dim,
+                                                      self.font, "number")
 
         # Mainloop
         while True:
-            # Drawing the option bar
-            self.draw_option_bar(screen, font1, 11)
-
             # Drawing tiles on the board
             for x in range(0, GRID_DIMENSIONS[0]):
                 for y in range(0, GRID_DIMENSIONS[1]):
                     self.tile_table[y][x].render_tile()
 
             # Code to exit the program if the quit button is pressed
-            for event in pygame.event.get():
+            for event in pygame.event.get():  # Quitting when the exit button is pressed
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN:  # Behaviour when the left/right mouse is clicked
                     mx, my = pygame.mouse.get_pos()
                     for x in range(0, GRID_DIMENSIONS[0]):
                         for y in range(0, GRID_DIMENSIONS[1]):
@@ -60,24 +66,14 @@ class MineSweeperBoard():
 
             pygame.display.update()
 
-    def draw_option_bar(self, screen, font, flags: int) -> None:
-        flag_str = "Flags: " + str(flags)
-        label1 = font.render(flag_str, True, RED)
-        width1, height1 = font.size(flag_str)
-        screen.blit(label1, (WINDOW_DIMENSIONS[0] * 1 / 4 - width1 / 2, 20 - height1 / 2))
-
-        solve_str = "Solve"
-        label2 = font.render(solve_str, True, RED)
-        width2, height2 = font.size(solve_str)
-        screen.blit(label2, (WINDOW_DIMENSIONS[0] * 2 / 4 - width2 / 2, 20 - height2 / 2))
-
-        restart_str = "Restart"
-        label3 = font.render(restart_str, True, RED)
-        width3, height3 = font.size(restart_str)
-        screen.blit(label3, (WINDOW_DIMENSIONS[0] * 3 / 4 - width3 / 2, 20 - height3 / 2))
-        return
-
     def get_surrounding_tiles(self, x: int, y: int) -> list[BoardTile]:
+        """
+        Returns the tiles surrounding a given tile.
+
+        :param x: the x grid coordinate of the desired tile, from left to right
+        :param y: the y grid coordinate of the desired tile, from top to bottom
+        :return: an array containing the surrounding tiles
+        """
         tiles = []
         # Check all tiles around the current tile (8 in total)
         for a, b in [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)]:
@@ -91,6 +87,13 @@ class MineSweeperBoard():
         return tiles
 
     def get_surrounding_mines(self, x: int, y: int) -> int:
+        """
+        Returns the number of mines surrounding the current tile
+
+        :param x: the x grid coordinate of the desired tile, from left to right
+        :param y: the y grid coordinate of the desired tile, from top to bottom
+        :return: the number of mines surrounding the current tile
+        """
         count = 0
         tiles = self.get_surrounding_tiles(x, y)
         for tile in tiles:
@@ -99,16 +102,31 @@ class MineSweeperBoard():
         return count
 
     def uncover_neighbouring(self, x: int, y: int, visited: set[BoardTile]) -> None:
+        """
+        Uncovers the tiles surrounding a given tile
+
+        :param x: the x grid coordinate of the current tile, from left to right
+        :param y: the y grid coordinate of the current tile, from top to bottom
+        :param visited: a set containing the tiles already visitted during the search.
+        This should be set to set() to start a search
+        """
         # Perform a recursive search on all neighbours
         cur_tile = self.tile_table[y][x]
         visited.add(cur_tile)
 
         neighbours = self.get_surrounding_tiles(x, y)
         for tile in neighbours:
+            tile.cur_type = tile.true_type
             if tile.true_type == "number" and tile.number == 0 and tile not in visited:
-                tile.cur_type = tile.true_type
                 cur_x, cur_y = tile.id
                 self.uncover_neighbouring(cur_x, cur_y, visited)
+
+    def game_over(self):
+        """
+        Called when the player clicks on a bomb tile. Currently prints a game over message to the console.
+        """
+        print("Game Over.")
+
 
 if __name__ == "__main__":
     MineSweeperBoard()
