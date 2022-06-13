@@ -6,14 +6,21 @@ import sys
 from Constants import *
 from BoardTile import BoardTile
 
+
 # Creating the font
 class MineSweeperBoard:
     """
-    This class initializes a mine sweeper game on a board and provides various methods to interact with it. The board is represented by a two-dimensional array indexed via [y][x]
+    This class initializes a mine sweeper game on a board and provides various methods to interact with it.
 
     Each tile is indexed in the tile_table 2D array, with the position (x,y) being indexed as tile_table[y][x].
 
     The position (0,0) represents the top left tile, while (x,y) represents a tile placed x right and y down.
+
+    CONTROLS:
+    Left mouse - uncover a tile
+    Right mouse - flag a tile
+    Enter/Return - causes the solver make a move
+    RCtrl - causes the solver attempt to complete the entire board
     """
 
     def __init__(self):
@@ -36,8 +43,8 @@ class MineSweeperBoard:
             x = random.randint(0, GRID_DIMENSIONS[0] - 1)
             y = random.randint(0, GRID_DIMENSIONS[1] - 1)
             tile = BoardTile(self.screen, self, (x, y),
-                                              (x * tile_dim[0], y * tile_dim[1]), tile_dim, self.font,
-                                              "mine")
+                             (x * tile_dim[0], y * tile_dim[1]), tile_dim, self.font,
+                             "mine")
             self.tile_table[y][x] = tile
             self.mine_tiles.append(tile)
 
@@ -49,6 +56,11 @@ class MineSweeperBoard:
                                                       self.font, "number")
 
         self.flags_left = NUMBER_MINES
+
+        self.loss = False  # Loss sentinel to notify solver of failure
+        # To avoid circular import
+        from SolverLogic import Solver
+        self.solver = Solver(self)
 
         # Mainloop
         while True:
@@ -69,6 +81,12 @@ class MineSweeperBoard:
                             self.tile_table[y][x].on_clicked(mx, my, event.button)
                     if self.check_win():
                         print("Winner!")
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:  # The solver should make a move each time this is pressed
+                        tile = self.solver.choose_tile()
+                        tile.uncover()
+                    if event.key == pygame.K_RCTRL:  # Auto-completes the board
+                        self.solver.solve_board()
 
             pygame.display.update()
 
@@ -94,7 +112,7 @@ class MineSweeperBoard:
 
     def get_surrounding_mines(self, x: int, y: int) -> int:
         """
-        Returns the number of mines surrounding the current tile
+        Returns the number of mines surrounding the current tile. (Intended for setting up the board)
 
         :param x: the x grid coordinate of the desired tile, from left to right
         :param y: the y grid coordinate of the desired tile, from top to bottom
@@ -107,7 +125,20 @@ class MineSweeperBoard:
                 count += 1
         return count
 
-    def uncover_neighbouring(self, x: int, y: int, visited: set[BoardTile]) -> None:
+    def get_unknown_tiles(self) -> list[BoardTile]:
+        """
+        Returns every tile that is currently unknown
+        :return: An array containing currently unknown tiles
+        """
+        tiles = []
+        for x in range(GRID_DIMENSIONS[0]):
+            for y in range(GRID_DIMENSIONS[1]):
+                temp = self.tile_table[y][x]
+                if temp.cur_type == "unknown":
+                    tiles.append(temp)
+        return tiles
+
+    def uncover_neighbouring(self, x: int, y: int, visited: set[BoardTile]):
         """
         Uncovers the tiles surrounding a given tile
 
@@ -132,6 +163,7 @@ class MineSweeperBoard:
         Called when the player clicks on a bomb tile. Currently prints a game over message to the console.
         """
         print("Game Over.")
+        self.loss = True
 
     def check_win(self) -> bool:
         """
@@ -143,6 +175,7 @@ class MineSweeperBoard:
             if tile.cur_type == "flag" and tile.true_type == "mine":
                 count += 1
         return count == NUMBER_MINES
+
 
 if __name__ == "__main__":
     MineSweeperBoard()

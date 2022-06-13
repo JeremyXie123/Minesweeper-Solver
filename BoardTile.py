@@ -51,7 +51,7 @@ class BoardTile:
             return True
         return False
 
-    def on_clicked(self, x: int, y: int, button: pygame.mouse) -> None:
+    def on_clicked(self, x: int, y: int, button: pygame.mouse):
         """
         Defines the behaviour of the tile when clicked by the mouse
 
@@ -62,13 +62,8 @@ class BoardTile:
         if self.is_in_tile(x, y):
             if button == 1:  # Left Click
                 if self.cur_type != "flag":  # Flagged squares cannot be revealed
-                    if self.true_type == "mine":
-                        self.game_board.game_over()
-                    elif self.true_type == "number" and self.number == 0:
-                        # We also want to clear all tiles linked to this one that are empty
-                        cur_x, cur_y = self.id
-                        self.game_board.uncover_neighbouring(cur_x, cur_y, set())
-                    self.cur_type = self.true_type
+                    self.uncover()
+
             elif button == 3:  # Right Click
                 # Flips the state of a tile between unknown and flag
                 if self.cur_type == "unknown" and self.game_board.flags_left:  # Only allow flags if under limit
@@ -78,7 +73,19 @@ class BoardTile:
                     self.cur_type = "unknown"
                     self.game_board.flags_left += 1
 
-    def render_tile(self) -> None:
+    def uncover(self):
+        """
+        Simulates uncovering a tile, with different behaviour depending on its type and state
+        """
+        if self.true_type == "mine":
+            self.game_board.game_over()
+        elif self.true_type == "number" and self.number == 0:
+            # We also want to clear all tiles linked to this one that are empty
+            cur_x, cur_y = self.id
+            self.game_board.uncover_neighbouring(cur_x, cur_y, set())
+        self.cur_type = self.true_type
+
+    def render_tile(self):
         """
         Renders the tile according to its type and attributes
         """
